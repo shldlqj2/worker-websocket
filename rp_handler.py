@@ -2,18 +2,16 @@ import runpod
 import time  
 import os 
 
-def print_env_variables():
-    for key, value in os.environ.items():
-        print(f"{key}: {value}")  # Print each environment variable
-
 def handler(event):
     input = event['input']
     
-    print_env_variables()
+    public_ip = os.environ.get('RUNPOD_PUBLIC_IP')  # Default to 'localhost' if not set
+    tcp_port = int(os.environ.get('RUNPOD_TCP_PORT_8080')) 
+    print(f"Public IP: {public_ip}")  
+    print(f"TCP Port: {tcp_port}")  
 
     prompt = input.get('prompt', 'Start Streaming')  
     seconds = input.get('seconds', 0)  
-
 
     time.sleep(seconds)  
 
