@@ -30,6 +30,7 @@ def handler(event):
     }
     
     # runpod.serverless.progress_update(progress_data, f"Public IP: {public_ip}, TCP Port: {tcp_port}")
+    # 
 
     prompt = input.get('prompt', 'Start Streaming')  
     seconds = input.get('seconds', 0)  
