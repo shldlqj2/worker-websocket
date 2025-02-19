@@ -55,13 +55,7 @@ def handler(event):
     print(f"Public IP: {public_ip}")  
     print(f"TCP Port: {tcp_port}")  
 
-    progress_data = {
-        **event, 
-        "public_ip": public_ip,
-        "tcp_port": tcp_port
-    }
-
-    runpod.serverless.progress_update(progress_data, f"Public IP: {public_ip}, TCP Port: {tcp_port}")
+    runpod.serverless.progress_update(event, f"Public IP: {public_ip}, TCP Port: {tcp_port}")
 
     # Start WebSocket server and wait for shutdown message
     result = start_websocket()
