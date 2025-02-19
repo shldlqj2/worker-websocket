@@ -1,6 +1,6 @@
 {
     "input": {
-        "name": "John Doe",
+        "prompt": "John Doe",
         "seconds": 15
     }
 }
