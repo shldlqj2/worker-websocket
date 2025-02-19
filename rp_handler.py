@@ -56,6 +56,7 @@ def handler(event):
     print(f"TCP Port: {tcp_port}")  
 
     progress_data = {
+        **event, 
         "public_ip": public_ip,
         "tcp_port": tcp_port
     }
