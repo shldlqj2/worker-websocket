@@ -2,7 +2,8 @@ import asyncio
 import websockets
 
 async def client():
-    uri = "ws://localhost:8765"
+    # Use public IP and TCP port of the worker to communicate
+    uri = "ws://213.173.99.31:31438"
     async with websockets.connect(uri) as websocket:
         await websocket.send("Hello")
         response = await websocket.recv()
