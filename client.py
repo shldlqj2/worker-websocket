@@ -16,9 +16,14 @@ async def receive_stream(ws_uri):
                 if "error" in data:
                     print(f"\n오류 발생: {data['error']}")
                     break
+
+                if "choices" in data:
+                    tokens = [choice.get("tokens", []) for choice in data["choices"]]
+                    for token_list in tokens:
+                        print("".join(token_list), end="", flush=True)
                     
-                if "token" in data:
-                    print(data["token"], end="", flush=True)
+                # if "token" in data:
+                #     print(data["token"], end="", flush=True)
                     
                 if data.get("finished", False):
                     print("\n\n[생성 완료]")

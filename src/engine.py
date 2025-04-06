@@ -66,7 +66,8 @@ class vLLMEngine:
         
         max_batch_size = batch_size or self.default_batch_size
         batch_size_growth_factor, min_batch_size = batch_size_growth_factor or self.batch_size_growth_factor, min_batch_size or self.min_batch_size
-        batch_size = BatchSize(max_batch_size, min_batch_size, batch_size_growth_factor)
+        #batch_size = BatchSize(max_batch_size, min_batch_size, batch_size_growth_factor)
+        batch_size = 1
     
 
         async for request_output in results_generator:
@@ -96,42 +97,26 @@ class vLLMEngine:
 
                 last_output_texts[output_index] = output.text
 
-        if not stream:
-            for output_index, output in enumerate(last_output_texts):
-                batch["choices"][output_index]["tokens"] = [output]
-            token_counters["batch"] += 1
+        if stream:
+            new_output = output.text[len(last_output_texts[output_index]):]
+            batch["choices"][output_index]["tokens"].append(new_output)
+            yield batch  # 토큰 생성 즉시 반환
+            batch = {"choices": [{"tokens": []} for _ in range(n_responses)]}
 
-        if token_counters["batch"] > 0:
+        # 최종 응답에서만 사용량 정보 포함
+        if not stream and token_counters["batch"] > 0:
             batch["usage"] = {"input": n_input_tokens, "output": token_counters["total"]}
             yield batch
 
 
+        # if not stream:
+        #     for output_index, output in enumerate(last_output_texts):
+        #         batch["choices"][output_index]["tokens"] = [output]
+        #     token_counters["batch"] += 1
 
-    # # src/engine.py에 다음 메소드 추가
-    # async def generate_stream(self, prompt):
-    #     """
-    #     프롬프트에 대한 응답을 스트리밍 방식으로 생성합니다.
-        
-    #     Args:
-    #         prompt (str): 모델에 전달할 텍스트 프롬프트
-            
-    #     Returns:
-    #         async generator: 생성된 토큰을 하나씩 반환하는 비동기 제너레이터
-    #     """
-    #     # vLLM 모델을 사용하여 텍스트 생성
-    #     # 여기서는 handler.py에 구현된 로직을 활용해야 합니다
-        
-    #     # 예시 구현:
-    #     generation_args = {
-    #         "prompt": prompt,
-    #         "max_tokens": 1024,
-    #         "temperature": 0.7,
-    #         "stream": True
-    #     }
-        
-    #     response = self.generate(generation_args)
-    #     for token in response:
-    #         yield token
+        # if token_counters["batch"] > 0:
+        #     batch["usage"] = {"input": n_input_tokens, "output": token_counters["total"]}
+        #     yield batch
 
 
     def _initialize_llm(self):
