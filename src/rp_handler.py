@@ -30,7 +30,7 @@ async def handler(job):
         "version":"테스트2"
     })
 
-    await asyncio.sleep(2)  # 잠시 대기
+    await asyncio.sleep(3)  # 잠시 대기
 
     # 비동기 생성기 시작
     try:
