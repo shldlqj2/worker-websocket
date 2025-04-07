@@ -60,7 +60,9 @@ if __name__ == "__main__":
         response = requests.post(
             f"https://api.runpod.ai/v2/{endpoint_id}/run",
             headers=headers,
-            json={"input": {"prompt": prompt, "stream": True}}
+            json={"input": {"prompt": prompt,"sampling_params":{
+                "max_tokens": 5000
+            }, "stream": True}}
         )
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
