@@ -30,4 +30,4 @@ jobs:
         context: .
         push: true
         platforms: linux/amd64
-        tags: ${{ secrets.DOCKER_USERNAME }}/runpod-worker-vllm-ws:latest
+        tags: ${{ secrets.DOCKER_USERNAME }}/runpod-worker-vllm-ws:gitflowtest
