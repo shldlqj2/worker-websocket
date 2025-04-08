@@ -59,9 +59,9 @@ class WebSocketServer:
             job_input = JobInput(prompt["input"])
             logger.info(f"JobInput처리완료")
             results_generator = self.engine.generate(job_input)
-
+            
+            #job_id에 해당하는 client에게만 결과 전송해야함
             async for token in results_generator:
-                # 모든 연결된 클라이언트에게 전송
                 for websocket in connected_clients.copy():
                     if websocket in self.active_connections:
                         try:

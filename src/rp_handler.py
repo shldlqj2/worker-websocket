@@ -38,9 +38,6 @@ async def handler(job):
         "port": pod_port,
         "version": "동시접속 Test v0.3",
     })
-
-    await asyncio.sleep(2)  # 잠시 대기
-
     # 비동기 생성기 시작
     try:
         await asyncio.wait_for(global_websocket_server.connection_complete.wait(), timeout=5)
