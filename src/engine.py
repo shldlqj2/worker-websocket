@@ -33,10 +33,19 @@ class vLLMEngine:
         self.default_batch_size = int(os.getenv("DEFAULT_BATCH_SIZE", DEFAULT_BATCH_SIZE))
         self.batch_size_growth_factor = int(os.getenv("BATCH_SIZE_GROWTH_FACTOR", DEFAULT_BATCH_SIZE_GROWTH_FACTOR))
         self.min_batch_size = int(os.getenv("MIN_BATCH_SIZE", DEFAULT_MIN_BATCH_SIZE))
-
+        
+    
     def dynamic_batch_size(self, current_batch_size, batch_size_growth_factor):
         return min(current_batch_size*batch_size_growth_factor, self.default_batch_size)
-                           
+
+    async def reset_context(self, request_id):
+        try:
+            await self.llm.emgine.abort(request_id)
+            await self.llm.engine.reset_context(request_id)[1]
+        except Exception as e:
+            logging.error("Error resetting context: %s", e)
+            raise e
+
     async def generate(self, job_input: JobInput):
         try:
             async for batch in self._generate_vllm(
@@ -104,35 +113,6 @@ class vLLMEngine:
         if token_counters["batch"] > 0:
             batch["usage"] = {"input": n_input_tokens, "output": token_counters["total"]}
             yield batch
-
-
-
-    # # src/engine.py에 다음 메소드 추가
-    # async def generate_stream(self, prompt):
-    #     """
-    #     프롬프트에 대한 응답을 스트리밍 방식으로 생성합니다.
-        
-    #     Args:
-    #         prompt (str): 모델에 전달할 텍스트 프롬프트
-            
-    #     Returns:
-    #         async generator: 생성된 토큰을 하나씩 반환하는 비동기 제너레이터
-    #     """
-    #     # vLLM 모델을 사용하여 텍스트 생성
-    #     # 여기서는 handler.py에 구현된 로직을 활용해야 합니다
-        
-    #     # 예시 구현:
-    #     generation_args = {
-    #         "prompt": prompt,
-    #         "max_tokens": 1024,
-    #         "temperature": 0.7,
-    #         "stream": True
-    #     }
-        
-    #     response = self.generate(generation_args)
-    #     for token in response:
-    #         yield token
-
 
     def _initialize_llm(self):
         try:
@@ -259,5 +239,4 @@ class OpenAIvLLMEngine(vLLMEngine):
                 if self.raw_openai_output:
                     batch = "".join(batch)
                 yield batch
-
             
