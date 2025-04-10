@@ -66,8 +66,7 @@ class vLLMEngine:
         
         max_batch_size = batch_size or self.default_batch_size
         batch_size_growth_factor, min_batch_size = batch_size_growth_factor or self.batch_size_growth_factor, min_batch_size or self.min_batch_size
-        #batch_size = BatchSize(max_batch_size, min_batch_size, batch_size_growth_factor)
-        batch_size = 1
+        batch_size = BatchSize(max_batch_size, min_batch_size, batch_size_growth_factor)
     
 
         async for request_output in results_generator:
@@ -97,27 +96,14 @@ class vLLMEngine:
 
                 last_output_texts[output_index] = output.text
 
-        if stream:
-            new_output = output.text[len(last_output_texts[output_index]):]
-            batch["choices"][output_index]["tokens"].append(new_output)
-            yield batch  # 토큰 생성 즉시 반환
-            batch = {"choices": [{"tokens": []} for _ in range(n_responses)]}
+        if not stream:
+            for output_index, output in enumerate(last_output_texts):
+                batch["choices"][output_index]["tokens"] = [output]
+            token_counters["batch"] += 1
 
-        # 최종 응답에서만 사용량 정보 포함
-        if not stream and token_counters["batch"] > 0:
+        if token_counters["batch"] > 0:
             batch["usage"] = {"input": n_input_tokens, "output": token_counters["total"]}
             yield batch
-
-
-        # if not stream:
-        #     for output_index, output in enumerate(last_output_texts):
-        #         batch["choices"][output_index]["tokens"] = [output]
-        #     token_counters["batch"] += 1
-
-        # if token_counters["batch"] > 0:
-        #     batch["usage"] = {"input": n_input_tokens, "output": token_counters["total"]}
-        #     yield batch
-
 
     def _initialize_llm(self):
         try:
@@ -244,5 +230,4 @@ class OpenAIvLLMEngine(vLLMEngine):
                 if self.raw_openai_output:
                     batch = "".join(batch)
                 yield batch
-
             

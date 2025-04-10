@@ -19,7 +19,7 @@ def build_job_data(prompt):
             "stream": True
         }
     }
-async def receive_stream(ws_uri, job_data):
+async def receive_stream(ws_uri, job_data, request_id):
     """WebSocket을 통해 스트리밍 응답 수신"""
     try:
         async with websockets.connect(ws_uri) as websocket:
@@ -45,14 +45,28 @@ async def receive_stream(ws_uri, job_data):
                     print(f"\n오류 발생: {data['error']}")
                     break
 
-                if "choices" in data:
-                    tokens = [choice.get("tokens", []) for choice in data["choices"]]
-                    for token_list in tokens:
-                        print("".join(token_list), end="", flush=True)
-                    
-                # if "token" in data:
-                #     print(data["token"], end="", flush=True)
-                    
+                # if "choices" in data:
+                #     tokens = [choice.get("tokens", []) for choice in data["choices"]]
+                #     for token_list in tokens:
+                #         print("".join(token_list), end="", flush=True)
+                
+                
+
+                if "token" in data:
+                    try:
+                        print(data["token"]["choices"][0]["tokens"][0], end="", flush=True)
+                    except (KeyError, IndexError):
+                        pass
+                else:
+                    try:
+                        print(data["choices"][0]["tokens"][0], end="", flush=True)
+                    except (KeyError, IndexError):
+                        pass
+
+                # if "finished" in data and data["finished"] == True:
+                #     print("\n\n[생성 완료]")
+                #     await websocket.send(json.dumps({"command": "shutdown"}))
+                #     break  
                 if data.get("finished", False):
                     print("\n\n[생성 완료]")
                     await websocket.send(json.dumps({"command": "shutdown"}))
@@ -132,7 +146,7 @@ if __name__ == "__main__":
     # 4. WebSocket 연결 실행
     if ws_uri:
         print(f"연결 시도: {ws_uri}")
-        asyncio.run(receive_stream(ws_uri, build_job_data(prompt)))
+        asyncio.run(receive_stream(ws_uri, build_job_data(prompt), request_id))
     else:
         print("연결 정보를 가져오지 못함")
         sys.exit(1)

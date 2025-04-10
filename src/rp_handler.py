@@ -41,10 +41,8 @@ async def handler(job):
     # 비동기 생성기 시작
     try:
         await asyncio.wait_for(global_websocket_server.connection_complete.wait(), timeout=5)
-
         job_id = JobInput(job["input"]).request_id
-        await global_websocket_server.start_generation(job)
-        await global_websocket_server.wait_for_job_completion(job_id)
+        await asyncio.wait_for(global_websocket_server.wait_for_job_completion(job_id), timeout=60)
         return {"status": "처리 완료"}
     except Exception as e:
         return {"error": str(e)}
