@@ -19,7 +19,7 @@ def build_job_data(prompt):
             "stream": True
         }
     }
-async def receive_stream(ws_uri, job_data, request_id):
+async def receive_stream(ws_uri, job_data, job_id):
     """WebSocket을 통해 스트리밍 응답 수신"""
     try:
         async with websockets.connect(ws_uri) as websocket:
@@ -27,7 +27,10 @@ async def receive_stream(ws_uri, job_data, request_id):
 
             await websocket.send(json.dumps({
                 "command": "start_job",
-                "job": job_data
+                "job": job_data,
+                "metadata": {
+                    "request_id": job_id
+                }
             }))
 
             init_response = await websocket.recv()
@@ -69,7 +72,13 @@ async def receive_stream(ws_uri, job_data, request_id):
                 #     break  
                 if data.get("finished", False):
                     print("\n\n[생성 완료]")
-                    await websocket.send(json.dumps({"command": "shutdown"}))
+                    await websocket.send(json.dumps({
+                        "command": "shutdown",
+                        "job": job_data,
+                        "metadata": {
+                            "request_id": job_id
+                        }
+                        }))
                     break
     except websockets.exceptions.ConnectionClosedOK:
         print("\n연결이 종료되었습니다.")
@@ -85,6 +94,7 @@ if __name__ == "__main__":
     api_key = sys.argv[2]
     prompt = sys.argv[3]
 
+
     # 1. 작업 시작 요청
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -96,7 +106,7 @@ if __name__ == "__main__":
             f"https://api.runpod.ai/v2/{endpoint_id}/run",
             headers=headers,
             json={
-                "input": build_job_data(prompt)
+                "input": build_job_data(prompt),
             }
         )
         response.raise_for_status()
@@ -114,6 +124,7 @@ if __name__ == "__main__":
 
     # 3. 상태 폴링 (최대 120초 대기)
     ws_uri = None
+    job_id = None
     for _ in range(120):
         try:
             status_resp = requests.get(
@@ -128,6 +139,7 @@ if __name__ == "__main__":
                     conn_info = status_data.get("output", {})
                     conn_ip = conn_info.get("ip")
                     conn_port = conn_info.get("port")
+                    job_id = conn_info.get("job_id")
                     ws_uri = f"ws://{conn_ip}:{conn_port}"
                     break
    
@@ -146,7 +158,7 @@ if __name__ == "__main__":
     # 4. WebSocket 연결 실행
     if ws_uri:
         print(f"연결 시도: {ws_uri}")
-        asyncio.run(receive_stream(ws_uri, build_job_data(prompt), request_id))
+        asyncio.run(receive_stream(ws_uri, build_job_data(prompt), job_id))
     else:
         print("연결 정보를 가져오지 못함")
         sys.exit(1)
