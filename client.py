@@ -7,7 +7,7 @@ import requests
 import uuid
 import os
 
-CONFIG_FILE = "ws_config.txt"
+CONFIG_FILE = "./ws_config.txt"
 
 def read_ws_config():
     """저장된 웹소켓 설정 읽기"""

@@ -68,13 +68,7 @@ async def handler(job):
         logging.info("에러 발생으로 인한 WebSocket 서버 인스턴스 재설정 완료")
         return {"error": str(e)}
     
-async def wait_for_job_completion(job_id):
-    logging.info(f"rp_handler에서 job_id: {job_id}의 작업 완료 대기 중")
-    await global_websocket_server.job_complete_events[job_id].wait()
-    await global_websocket_server.cleanup_task(job_id)
-    if global_websocket_server.is_shutting_down:
-        async with server_lock:
-            await global_websocket_server.server_terminate.wait()
+
 
 runpod.serverless.start(
     {
