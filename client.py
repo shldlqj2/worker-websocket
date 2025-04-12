@@ -122,10 +122,10 @@ if __name__ == "__main__":
         print("잘못된 응답 형식")
         sys.exit(1)
 
-    # 3. 상태 폴링 (최대 120초 대기)
+    # 3. 상태 폴링 (최대 300초 대기)
     ws_uri = None
     job_id = None
-    for _ in range(120):
+    for _ in range(300):
         try:
             status_resp = requests.get(
                 f"https://api.runpod.ai/v2/{endpoint_id}/status/{request_id}",

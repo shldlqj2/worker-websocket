@@ -19,11 +19,11 @@ class WebSocketServer:
         self.active_connections = {}
         self.active_tasks = {}
         self.job_complete_events={}
-        self.connection_complete={}
+        self.connection_complete = {}
 
         self.generation_task = None
         self.is_shutting_down = False
-        
+
         self.connection_lock = asyncio.Lock()
         self.server_terminate = asyncio.Event()
 
@@ -41,17 +41,12 @@ class WebSocketServer:
         
         logger.info(f"{job_id} 추론 시작")
 
-    def cleanup_task(self, job_id):
+    async def cleanup_task(self, job_id):
         logger.info(f"{job_id} 작업 정리 시작, 남은 작업: {len(self.active_tasks)}")
 
         if job_id in self.active_tasks:
             del self.active_tasks[job_id]
-            self.job_complete_events[job_id].set()
             logger.info(f"{job_id} cleanup 완료")
-
-        if job_id in self.connection_complete:
-            del self.connection_complete[job_id]  # connection_complete 정리 추가
-
 
         if len(self.active_tasks) == 0:
             if len(self.active_connections) == 0 and not self.is_shutting_down:
@@ -157,12 +152,19 @@ class WebSocketServer:
                         if job_id not in self.job_complete_events:
                             self.job_complete_events[job_id] = asyncio.Event()
 
-                        await self.start_generation(job, job_id)
+                        if job_id not in self.connection_complete:
+                            self.connection_complete[job_id] = asyncio.Event()
+            
+                        asyncio.create_task(self.start_generation(job, job_id))
+                        # await self.start_generation(job, job_id)
                         await websocket.send(json.dumps({
                             "status": "작업 시작",
                             "job_id": job_id
                         }))
+
                         self.connection_complete[job_id].set()
+
+
                         logger.info(f"작업 {job_id} handle_client try문 완료")
 
 
@@ -176,7 +178,7 @@ class WebSocketServer:
                     await websocket.send(json.dumps({
                         "status": "종료"
                     }))
-
+                    
                     break
                     
         except websockets.exceptions.ConnectionClosed:
@@ -192,16 +194,18 @@ class WebSocketServer:
             if websocket in self.active_connections:
                 job_id = self.active_connections[websocket]
                 del self.active_connections[websocket]
+                self.job_complete_events[job_id].set()
                 logger.info(f"클라이언트 종료 완료, 남은 연결: {len(self.active_connections)}")    
-                self.cleanup_task(job_id)
 
     async def start(self):
         """서버 시작"""
+        self.server_terminate.clear()
         self.server = await websockets.serve(
             self.handle_client,
             self.host,
             self.port
         )
+        self.is_shutting_down = False
         logger.info(f"서버 시작: {self.host}:{self.port}")
 
     async def shutdown(self):
@@ -220,9 +224,16 @@ class WebSocketServer:
         
         if self.server:
             self.server.close()
-            self.server_terminate.set()
             await self.server.wait_closed()
-            logger.info(f"Websocket 서버 종료 완료")
+            
+        
+        self.active_tasks.clear()
+        self.active_connections.clear()
+        self.job_complete_events.clear()
+        self.connection_complete.clear()
+        self.server_terminate.set()
+        logger.info(f"Websocket 서버 종료 완료")
+
 
     # async def wait_for_job_completion(self, job_id):
     #     """특정 작업의 완료를 기다림"""

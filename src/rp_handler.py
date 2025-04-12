@@ -26,17 +26,22 @@ async def handler(job):
     engine = OpenAIvLLMEngine if job_input.openai_route else vllm_engine
 
     #동시에 여러요청이 같은 시간에 들어와서 생길 수 있는 문제를 해결하기위해 락 설정정
-    if global_websocket_server is None:
-        global_websocket_server = WebSocketServer(
-                engine,
-                host="0.0.0.0",
-                port=8765
-            )
-        await global_websocket_server.start()
+    async with server_lock:
+        if global_websocket_server is None:
+            global_websocket_server = WebSocketServer(
+                    engine,
+                    host="0.0.0.0",
+                    port=8765
+                )
+            await global_websocket_server.start()
+            logging.info("WebSocket 서버 인스턴스 최초 생성 완료")
+        
+        if global_websocket_server.server_terminate.is_set():
+            await global_websocket_server.start()
+            logging.info("WebSocket 서버 인스턴스 재설정 완료")
+            
     
     job_id = JobInput(job["input"]).request_id
-
-    global_websocket_server.connection_complete[job_id] = asyncio.Event()
 
     # 연결 정보 공유
     runpod.serverless.progress_update(job, {
@@ -48,16 +53,24 @@ async def handler(job):
 
     # 비동기 생성기 시작
     try:
-        
-        await asyncio.wait_for(global_websocket_server.connection_complete[job_id].wait(), timeout=5)
+        if job_id not in global_websocket_server.connection_complete:
+            global_websocket_server.connection_complete[job_id] = asyncio.Event()
+
+        await global_websocket_server.connection_complete[job_id].wait()
         logging.info(f"In rp_hander job_id: {job_id}")
         await global_websocket_server.job_complete_events[job_id].wait()
-        if asyncio.wait_for(global_websocket_server.server_terminate.wait(), timeout=2):
-            # 서버가 종료되었다면 global_websocket_server를 None으로 재설정
-            async with server_lock:
-                global_websocket_server = None
-                logging.info("WebSocket 서버 인스턴스 재설정 완료")
+        await global_websocket_server.cleanup_task(job_id)
+        async with server_lock:
+            if global_websocket_server.is_shutting_down:
+                await global_websocket_server.server_terminate.wait()
+        logging.info(f"job_id: {job_id}의 Handler 종료")
+
+                
+                
     except Exception as e:
+        await global_websocket_server.shutdown()
+        global_websocket_server = None
+        logging.info("에러 발생으로 인한 WebSocket 서버 인스턴스 재설정 완료")
         return {"error": str(e)}
     
 
