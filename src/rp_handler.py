@@ -58,11 +58,7 @@ async def handler(job):
 
         await global_websocket_server.connection_complete[job_id].wait()
         logging.info(f"In rp_hander job_id: {job_id}")
-        await global_websocket_server.job_complete_events[job_id].wait()
-        await global_websocket_server.cleanup_task(job_id)
-        async with server_lock:
-            if global_websocket_server.is_shutting_down:
-                await global_websocket_server.server_terminate.wait()
+        asyncio.create_task(wait_for_job_completion(job_id))
         logging.info(f"job_id: {job_id}의 Handler 종료")
 
                 
@@ -73,6 +69,12 @@ async def handler(job):
         logging.info("에러 발생으로 인한 WebSocket 서버 인스턴스 재설정 완료")
         return {"error": str(e)}
     
+async def wait_for_job_completion(job_id):
+    await global_websocket_server.job_complete_events[job_id].wait()
+    await global_websocket_server.cleanup_task(job_id)
+    if global_websocket_server.is_shutting_down:
+        async with server_lock:
+            await global_websocket_server.server_terminate.wait()
 
 runpod.serverless.start(
     {
