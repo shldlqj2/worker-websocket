@@ -124,6 +124,7 @@ class WebSocketServer:
                         
             if job_id in self.job_complete_events:
                 self.job_complete_events[job_id].set()
+        
             
 
 
@@ -178,7 +179,6 @@ class WebSocketServer:
                     await websocket.send(json.dumps({
                         "status": "종료"
                     }))
-                    
                     break
                     
         except websockets.exceptions.ConnectionClosed:
@@ -195,6 +195,7 @@ class WebSocketServer:
                 job_id = self.active_connections[websocket]
                 del self.active_connections[websocket]
                 self.job_complete_events[job_id].set()
+                asyncio.create_task(self.cleanup_task(job_id))
                 logger.info(f"클라이언트 종료 완료, 남은 연결: {len(self.active_connections)}")    
 
     async def start(self):
